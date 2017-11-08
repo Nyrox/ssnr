@@ -1,21 +1,18 @@
 use std::io::prelude::*;
-use std::net::{TcpStream, TcpListener};
+use std::net::{TcpListener};
 use std::thread;
-use std::io::Cursor;
 use std::mem::{transmute};
-use std::path::Path;
 use std::fs::File;
 
 extern crate zip;
-use self::zip::write::FileOptions;
-
 
 
 // Will start a server in a seperate thread and return control back to the caller
-pub fn start_server_local() {
+#[allow(dead_code)]
+pub fn start_server_local() -> thread::JoinHandle<()> {
 	thread::spawn(|| {
 		start_server();
-	});
+	})
 }
 
 // Will start a server on the thread it is called, blocking execution

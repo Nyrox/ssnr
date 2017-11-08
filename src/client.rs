@@ -1,6 +1,14 @@
 extern crate gitignore;
 extern crate zip;
 extern crate walkdir;
+extern crate crypto;
+extern crate rand;
+
+use self::crypto::{ symmetriccipher, buffer, aes, blockmodes, scrypt };
+use self::crypto::buffer::{ ReadBuffer, WriteBuffer, BufferResult };
+use self::crypto::scrypt::ScryptParams;
+
+use self::rand::{ Rng, OsRng };
 
 use std::io::{Cursor};
 use std::io::prelude::*;
@@ -66,6 +74,44 @@ impl<'a> Client<'a> {
 		
 		header.append(cursor.get_mut());
 		println!("{}", header.len());
-		self.conn.write_all(&header).unwrap();
+		
+		let key: [u8; 32] = [0; 32];
+		let iv: [u8; 16] = [0; 16];
+		
+		let params = ScryptParams::new(10, 8, 16);
+		let s_key = scrypt::scrypt_simple("test", &params).unwrap();
+		println!("{}, {:?}", s_key.len(), s_key);
+		let encrypted = encrypt(&header, &key, &iv).unwrap();
+		println!("{}", encrypted.len());
+		
+		self.conn.write_all(&encrypted).unwrap();
 	}
+}
+
+#[allow(dead_code)]
+fn encrypt(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, symmetriccipher::SymmetricCipherError> {
+	
+	let mut encryptor = aes::cbc_encryptor(
+	aes::KeySize::KeySize256,
+	key,
+	iv,
+	blockmodes::PkcsPadding);
+	
+	let mut final_result = Vec::<u8>::new();
+	let mut read_buffer = buffer::RefReadBuffer::new(data);
+	let mut buffer = [0; 4096];
+	let mut write_buffer = buffer::RefWriteBuffer::new(&mut buffer);
+	
+	loop {
+		let result = try!(encryptor.encrypt(&mut read_buffer, &mut write_buffer, true));
+		
+		final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().map(|&i| i));
+		
+		match result {
+			BufferResult::BufferUnderflow => break,
+			BufferResult::BufferOverflow => { }
+		}
+	}
+	
+	Ok(final_result)
 }

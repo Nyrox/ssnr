@@ -1,13 +1,14 @@
 use std::env;
+use std::process::Command;
 
 mod server;
 mod client;
 
 use client::Client;
 
-fn test() {
+fn test(id: &str) {
 	let mut client = Client::connect("127.0.0.1:8542");
-	client.push("test");
+	client.push(id);
 }
 
 fn main() {
@@ -21,14 +22,12 @@ fn main() {
 		return;
 	}
 	
-	// Start a local server for dev purposes
-	server::start_server_local();	
-	
 	match &*(arguments[1]) {
-		"test" => { test() }
+		"test" => { test(&arguments[2]) }
+		"serv" => {
+			server::start_server();
+		}
 		_ => panic!("{} is not a valid command.", arguments[1])
 	}
 	
-	
-	loop { }
 }
