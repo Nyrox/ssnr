@@ -3,6 +3,7 @@ use std::process::Command;
 
 mod server;
 mod client;
+mod api;
 
 use client::Client;
 
