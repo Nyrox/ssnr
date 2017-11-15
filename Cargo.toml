@@ -7,5 +7,4 @@ authors = ["Nyrox <mark.oliver@hotmail.de>"]
 zip="*"
 walkdir="*"
 gitignore="*"
-rust-crypto="*"
 rand="*"

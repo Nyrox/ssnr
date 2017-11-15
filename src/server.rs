@@ -6,6 +6,7 @@ use std::fs::File;
 
 extern crate zip;
 
+use api;
 
 // Will start a server in a seperate thread and return control back to the caller
 #[allow(dead_code)]
@@ -40,15 +41,24 @@ pub fn start_server() {
 		let id = String::from_utf8_lossy(&*id).into_owned();
 		
 		println!("{}, {}, {}", cmd, id_len, id);
-			
-		let mut buffer = Vec::new();
-		stream.read_to_end(&mut buffer).unwrap();
 		
-		println!("{}", buffer.len());
-		
-		let mut file = File::create(format!("data/{}.zip", id)).unwrap();
-		file.write_all(&buffer).unwrap();
-		
+		match unsafe { transmute(cmd) } {
+			api::Command::PUSH => {
+				let mut buffer = Vec::new();
+				stream.read_to_end(&mut buffer).unwrap();
+				
+				println!("{}", buffer.len());
+				
+				let mut file = File::create(format!("data/{}.zip", id)).unwrap();
+				file.write_all(&buffer).unwrap();
+			},
+			api::Command::PULL => {
+				let mut file = File::open(format!("data/{}.zip", id)).unwrap();
+				let mut buffer = Vec::new();
+				file.read_to_end(&mut buffer).unwrap();
+				stream.write_all(&buffer).unwrap();
+			}
+		}
 		// let mut zip = zip::ZipArchive::new(Cursor::new(buffer)).unwrap();
 		// 
 		// for i in 0..zip.len() {

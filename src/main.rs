@@ -7,9 +7,14 @@ mod api;
 
 use client::Client;
 
-fn test(id: &str) {
+fn push(id: &str) {
 	let mut client = Client::connect("127.0.0.1:8542");
 	client.push(id);
+}
+
+fn pull(id: &str) {
+	let mut client = Client::connect("127.0.0.1:8542");
+	client.pull(id);
 }
 
 fn main() {
@@ -24,7 +29,8 @@ fn main() {
 	}
 	
 	match &*(arguments[1]) {
-		"test" => { test(&arguments[2]) }
+		"push" => { push(&arguments[2]) },
+		"pull" => { pull(&arguments[2]) },
 		"serv" => {
 			server::start_server();
 		}

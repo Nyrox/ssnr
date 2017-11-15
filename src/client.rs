@@ -1,12 +1,7 @@
 extern crate gitignore;
 extern crate zip;
 extern crate walkdir;
-extern crate crypto;
 extern crate rand;
-
-use self::crypto::{ symmetriccipher, buffer, aes, blockmodes, scrypt, bcrypt };
-use self::crypto::buffer::{ ReadBuffer, WriteBuffer, BufferResult };
-use self::crypto::scrypt::ScryptParams;
 
 use self::rand::{ Rng, OsRng };
 
@@ -15,6 +10,7 @@ use std::io::prelude::*;
 use std::net::{TcpStream};
 use std::path::{Path};
 use std::fs::File;
+use std::fs;
 use std::mem::{transmute};
 
 use self::zip::write::FileOptions;
@@ -37,23 +33,7 @@ impl<'a> Client<'a> {
 		
 		let buffer = Vec::<u8>::new();
 		let mut cursor = Cursor::new(buffer);
-		
-		// Write the header in
-		/*
-		Header Format:
-		8bit command code
-			42 => push
-		
-		32bit length of repo identifier
-		
-		Variable Length Repository Identifier
-		*/
-		let mut header = Vec::<u8>::new();
-		header.write_all(&[42; 1]).unwrap();
-		let id_len: [u8; 4] = unsafe { transmute(repo_name.len() as u32) };
-		header.write_all(&id_len).unwrap();
-		header.write_all(repo_name.as_bytes()).unwrap();
-		
+
 		println!("{:?}, {:?}", repo_name.len(), repo_name.as_bytes());
 		{
 			let mut zip = zip::ZipWriter::new(&mut cursor);
@@ -76,9 +56,34 @@ impl<'a> Client<'a> {
 		}
 		
 		
-		let payload = api::EncryptedPayload::encrypt(cursor.get_mut(), "test");
-		let request = PushRequest::new(repo_name, payload);
+		let request = PushRequest::new(repo_name, cursor.get_mut().to_vec());
 		
 		self.conn.write_all(&request.encode()).unwrap();
+	}
+	
+	pub fn pull(&mut self, repo_name: &str) {
+		println!("Pulling...");
+		
+		let request = PullRequest::new(repo_name);
+		self.conn.write_all(&request.encode()).unwrap();
+		
+		let mut buffer = Vec::new();
+		self.conn.read_to_end(&mut buffer).unwrap();
+		
+		let mut reader = Cursor::new(buffer);
+		let mut zip = zip::ZipArchive::new(reader).unwrap();
+		
+		for i in 0..zip.len() {
+			let mut file = zip.by_index(i).expect("File failure.");
+			if let Some(sub) = file.name().rfind('\\') {
+				fs::create_dir_all(file.name().split_at(sub).0);
+			}
+			println!("{}", file.name());
+			let mut buffer = Vec::new();
+			file.read_to_end(&mut buffer).expect("Reading file failed.");
+			let mut diskFile = File::create(file.name()).expect("Creating file failed");
+			diskFile.write_all(&buffer).expect("Writing to file failed.");			
+		}
+
 	}
 }
